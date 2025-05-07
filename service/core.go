@@ -70,7 +70,7 @@ func (c *Core) Start() error {
 	}
 
 	runTicker := time.NewTicker(time.Duration(c.maxRate) * time.Microsecond)
-	checkTicker := time.NewTicker(time.Minute * 2)
+	checkTicker := time.NewTicker(c.conf.CheckInterval * time.Minute)
 	go c.run(runTicker, dkpList)
 
 	timeout := time.After(time.Duration(c.duration) * time.Minute)
@@ -108,49 +108,50 @@ func (c *Core) run(ticker *time.Ticker, dkpList []string) {
 	number := 0
 	Err := 0
 	defer ticker.Stop()
-	//for {
-	select {
-	case <-ticker.C:
-		productPrice := &extract.ExtProductPrice{}
-		number++
-		dkp := dkpList[rand.IntN(len(dkpList))]
-		color := []string{"نقره ای", "مشکلی", "طوسی", "استیل"}
+	for {
+		select {
+		case <-ticker.C:
+			productPrice := &extract.ExtProductPrice{}
+			number++
+			dkp := dkpList[rand.IntN(len(dkpList))]
+			color := []string{"نقره ای", "مشکلی", "طوسی", "استیل"}
 
-		url := fmt.Sprintf(c.conf.DigiKalaAPIURL, dkp)
-		resp, err := http.Get(url)
-		if err != nil {
-			Err++
-			c.Q.Add(fmt.Sprintf("[%d] DKP: %s | Error: %v\n", 1, dkp, err))
-			c.logger.Error().
-				Err(err).
-				Msg("failed to request digikala")
-		} else {
-			productPrice, err = c.findPrice(color, resp)
+			url := fmt.Sprintf(c.conf.DigiKalaAPIURL, dkp)
+			resp, err := http.Get(url)
 			if err != nil {
+				Err++
+				c.Q.Add(fmt.Sprintf("[%d] DKP: %s | Error: %v\n", 1, dkp, err))
 				c.logger.Error().
 					Err(err).
-					Str("dkp", dkp).
-					Msg("failed to extract data")
+					Msg("failed to request digikala")
+
+			} else {
+				productPrice, err = c.findPrice(color, resp)
+				if err != nil {
+					c.logger.Error().
+						Err(err).
+						Str("dkp", dkp).
+						Msg("failed to extract data")
+				}
+				productPrice.Status = resp.StatusCode
+
 			}
-			productPrice.Status = resp.StatusCode
 
-		}
-
-	case req := <-c.notif:
-		if req == "done" {
-			c.response <- "quit successfully!"
-			return
-		} else if req == "log" {
-			c.response <- fmt.Sprintf("number of Request %d, number of Error %d", number, Err)
-			number = 0
-			Err = 0
+		case req := <-c.notif:
+			if req == "done" {
+				c.response <- "quit successfully!"
+				return
+			} else if req == "log" {
+				c.response <- fmt.Sprintf("number of Request %d, number of Error %d", number, Err)
+				number = 0
+				Err = 0
+			}
 		}
 	}
-	//}
 }
 
 func (c *Core) SendTelegramMessage(message string) error {
-	c.logger.Info()
+	c.logger.Info().Msg(fmt.Sprintf("[telegram] %s...", message[:5]))
 	url := fmt.Sprintf(c.conf.TelegramAPIURL, c.conf.TelegramBotToken)
 
 	payload := map[string]string{

@@ -2,7 +2,10 @@ package config
 
 import (
 	"github.com/joho/godotenv"
+	"log"
 	"os"
+	"strconv"
+	"time"
 )
 
 type Config struct {
@@ -11,6 +14,7 @@ type Config struct {
 	TelegramAPIURL   string
 	DigiKalaAPIURL   string
 	Port             string
+	CheckInterval    time.Duration
 }
 
 func LoadConfig() (*Config, error) {
@@ -22,14 +26,19 @@ func LoadConfig() (*Config, error) {
 	tbt := os.Getenv("TELEGRAM_BOT_TOKEN")
 	tci := os.Getenv("TELEGRAM_CHAT_ID")
 	tau := os.Getenv("TELEGRAM_API_URL")
-	dau := os.Getenv("DG_API_URL")
+	dau := os.Getenv("DIGIKALA_API_URL")
 	port := os.Getenv("PORT")
+	check, err := strconv.Atoi(os.Getenv("CHEKING_INTERVAL"))
+	if err != nil {
+		log.Fatal(err)
+	}
 	return &Config{
 		TelegramBotToken: tbt,
 		TelegramChatID:   tci,
 		TelegramAPIURL:   tau,
 		DigiKalaAPIURL:   dau,
 		Port:             port,
+		CheckInterval:    time.Duration(check),
 	}, nil
 
 }
