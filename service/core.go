@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"math/rand/v2"
+	"github.com/eslami200117/ala_unlimited/model/request"
 	"net/http"
 	"os"
 	"time"
@@ -17,14 +17,16 @@ import (
 )
 
 type Core struct {
-	conf      *config.Config
-	Q         *FixedQueue
-	notif     chan string
-	response  chan string
-	maxRate   int
-	duration  int
-	sellerMap map[int]string
-	logger    zerolog.Logger
+	conf        *config.Config
+	Q           *FixedQueue
+	notif       chan string
+	messageResp chan string
+	maxRate     int
+	duration    int
+	sellerMap   map[int]string
+	logger      zerolog.Logger
+	reqChan     chan request.Request
+	resChan     chan *extract.ExtProductPrice
 }
 
 var sellerHard = map[int]string{
@@ -34,12 +36,14 @@ var sellerHard = map[int]string{
 
 func NewCore(cnf *config.Config, _logger zerolog.Logger) *Core {
 	ntf := Core{
-		conf:      cnf,
-		Q:         NewFixedQueue(100),
-		notif:     make(chan string, 1),
-		response:  make(chan string),
-		sellerMap: sellerHard,
-		logger:    _logger,
+		conf:        cnf,
+		Q:           NewFixedQueue(100),
+		notif:       make(chan string, 1),
+		messageResp: make(chan string),
+		sellerMap:   sellerHard,
+		logger:      _logger,
+		reqChan:     make(chan request.Request, 100),
+		resChan:     make(chan *extract.ExtProductPrice, 100),
 	}
 
 	return &ntf
@@ -81,7 +85,7 @@ func (c *Core) Start() error {
 			select {
 			case <-checkTicker.C:
 				c.notif <- "log"
-				err := c.SendTelegramMessage(<-c.response)
+				err := c.SendTelegramMessage(<-c.messageResp)
 				if err != nil {
 					c.logger.Error().
 						Err(err).
@@ -90,7 +94,7 @@ func (c *Core) Start() error {
 
 			case <-timeout:
 				c.notif <- "done"
-				err := c.SendTelegramMessage(<-c.response)
+				err := c.SendTelegramMessage(<-c.messageResp)
 				if err != nil {
 					c.logger.Error().
 						Err(err).
@@ -113,8 +117,9 @@ func (c *Core) run(ticker *time.Ticker, dkpList []string) {
 		case <-ticker.C:
 			productPrice := &extract.ExtProductPrice{}
 			number++
-			dkp := dkpList[rand.IntN(len(dkpList))]
-			color := []string{"نقره ای", "مشکلی", "طوسی", "استیل"}
+			req := <-c.reqChan
+			dkp := req.DKP
+			colors := req.Colors
 
 			url := fmt.Sprintf(c.conf.DigiKalaAPIURL, dkp)
 			resp, err := http.Get(url)
@@ -126,7 +131,7 @@ func (c *Core) run(ticker *time.Ticker, dkpList []string) {
 					Msg("failed to request digikala")
 
 			} else {
-				productPrice, err = c.findPrice(color, resp)
+				productPrice, err = c.findPrice(colors, resp)
 				if err != nil {
 					c.logger.Error().
 						Err(err).
@@ -134,15 +139,15 @@ func (c *Core) run(ticker *time.Ticker, dkpList []string) {
 						Msg("failed to extract data")
 				}
 				productPrice.Status = resp.StatusCode
-
+				c.resChan <- productPrice
 			}
 
 		case req := <-c.notif:
 			if req == "done" {
-				c.response <- "quit successfully!"
+				c.messageResp <- "quit successfully!"
 				return
 			} else if req == "log" {
-				c.response <- fmt.Sprintf("number of Request %d, number of Error %d", number, Err)
+				c.messageResp <- fmt.Sprintf("number of Request %d, number of Error %d", number, Err)
 				number = 0
 				Err = 0
 			}
