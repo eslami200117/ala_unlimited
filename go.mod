@@ -2,7 +2,10 @@ module github.com/eslami200117/ala_unlimited
 
 go 1.24.2
 
-require github.com/rs/zerolog v1.34.0
+require (
+	github.com/joho/godotenv v1.5.1
+	github.com/rs/zerolog v1.34.0
+)
 
 require (
 	github.com/mattn/go-colorable v0.1.13 // indirect

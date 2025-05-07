@@ -5,22 +5,19 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/eslami200117/ala_unlimited/model/extract"
 	"math/rand/v2"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/eslami200117/ala_unlimited/config"
+	"github.com/eslami200117/ala_unlimited/model/extract"
+
 	"github.com/rs/zerolog"
 )
 
-const (
-	telegramAPIURL = "https://api.telegram.org/bot%s/sendMessage"
-)
-
 type Core struct {
-	botToken  string
-	chatID    string
+	conf      *config.Config
 	Q         *FixedQueue
 	notif     chan string
 	response  chan string
@@ -35,18 +32,14 @@ var sellerHard = map[int]string{
 	1720400: "پاورتک شاپ",
 }
 
-func NewCore(botToken, chatID string) *Core {
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+func NewCore(cnf *config.Config, _logger zerolog.Logger) *Core {
 	ntf := Core{
-		botToken:  botToken,
-		chatID:    chatID,
+		conf:      cnf,
 		Q:         NewFixedQueue(100),
 		notif:     make(chan string, 1),
 		response:  make(chan string),
 		sellerMap: sellerHard,
-		logger: zerolog.New(os.Stderr).
-			With().Str("package", "service").
-			Caller().Timestamp().Logger(),
+		logger:    _logger,
 	}
 
 	return &ntf
@@ -123,7 +116,7 @@ func (c *Core) run(ticker *time.Ticker, dkpList []string) {
 		dkp := dkpList[rand.IntN(len(dkpList))]
 		color := []string{"نقره ای", "مشکلی", "طوسی", "استیل"}
 
-		url := fmt.Sprintf("https://api.digikala.com/v2/product/%s/", dkp)
+		url := fmt.Sprintf(c.conf.DigiKalaAPIURL, dkp)
 		resp, err := http.Get(url)
 		if err != nil {
 			Err++
@@ -158,10 +151,10 @@ func (c *Core) run(ticker *time.Ticker, dkpList []string) {
 
 func (c *Core) SendTelegramMessage(message string) error {
 	c.logger.Info()
-	url := fmt.Sprintf(telegramAPIURL, c.botToken)
+	url := fmt.Sprintf(c.conf.TelegramAPIURL, c.conf.TelegramBotToken)
 
 	payload := map[string]string{
-		"chat_id": c.chatID,
+		"chat_id": c.conf.TelegramChatID,
 		"text":    message,
 	}
 	jsonData, _ := json.Marshal(payload)
