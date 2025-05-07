@@ -4,18 +4,15 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/eslami200117/ala_unlimited/notification"
+	"github.com/eslami200117/ala_unlimited/service"
 )
 
-
-
-
 type Api struct {
-	token string
-	notifi *notification.Notifi
+	token  string
+	notifi *service.Core
 }
 
-func NewApi(notifi *notification.Notifi) *Api {
+func NewApi(notifi *service.Core) *Api {
 	return &Api{
 		notifi: notifi,
 	}
@@ -39,7 +36,6 @@ func (api *Api) StartTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	api.notifi.ReConfig(maxRate, duration)
 	err = api.notifi.Start()
 	if err != nil {
@@ -48,4 +44,3 @@ func (api *Api) StartTest(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 }
-
