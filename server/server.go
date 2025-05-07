@@ -15,6 +15,7 @@ type AlaServerInterface interface {
 type AlaServer struct {
 	route *chi.Mux
 }
+
 func NewAlaServer() *AlaServer {
 	return &AlaServer{
 		route: chi.NewRouter(),
@@ -30,7 +31,7 @@ func (s *AlaServer) Initialize(api *handler.Api) {
 	go cronJobs()
 
 	s.route.Route("/test", func(r chi.Router) {
-		r.Use(middleware.Logger)  
+		r.Use(middleware.Logger)
 		// r.Use(middleware.Recoverer)
 		r.Get("/start", api.StartTest)
 	})
