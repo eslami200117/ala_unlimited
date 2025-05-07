@@ -118,7 +118,7 @@ func (c *Core) run(ticker *time.Ticker, dkpList []string) {
 	//for {
 	select {
 	case <-ticker.C:
-		var productPrice *extract.ExtProductPrice = &extract.ExtProductPrice{}
+		productPrice := &extract.ExtProductPrice{}
 		number++
 		dkp := dkpList[rand.IntN(len(dkpList))]
 		color := []string{"نقره ای", "مشکلی", "طوسی", "استیل"}
@@ -167,6 +167,9 @@ func (c *Core) SendTelegramMessage(message string) error {
 	jsonData, _ := json.Marshal(payload)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
+		c.logger.Error().
+			Err(err).
+			Msg("failed to send telegram message")
 		return err
 	}
 	defer resp.Body.Close()
