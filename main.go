@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/eslami200117/ala_unlimited/config"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"net/http"
 	"os"
 
@@ -16,22 +15,25 @@ import (
 func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	logger := zerolog.New(os.Stderr).
-		With().Str("package", "service").
+		With().Str("package", "main").
 		Caller().Timestamp().Logger()
 
 	conf, err := config.LoadConfig()
 	if err != nil {
-		log.Error().
+		logger.Error().
 			Err(err).
 			Msg("failed to load config")
 	}
 
-	coreService := service.NewCore(conf, logger)
+	coreService := service.NewCore(conf)
 	api := handler.NewApi(coreService)
+
 	r := server.NewAlaServer()
 	r.Initialize(api)
-	log.Info().Msg(fmt.Sprintf("Listening on port %s", conf.Port))
-	log.Fatal().
+
+	logger.Info().
+		Msg(fmt.Sprintf("Listening on port %s", conf.Port))
+	logger.Fatal().
 		Err(http.ListenAndServe(fmt.Sprintf(":%s", conf.Port), r)).
 		Msg("Failed to start server")
 }

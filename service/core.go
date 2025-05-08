@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -21,8 +20,6 @@ type Core struct {
 	Q           *FixedQueue
 	notif       chan string
 	messageResp chan string
-	maxRate     int
-	duration    int
 	sellerMap   map[int]string
 	logger      zerolog.Logger
 	reqChan     chan request.Request
@@ -34,81 +31,64 @@ var sellerHard = map[int]string{
 	1720400: "پاورتک شاپ",
 }
 
-func NewCore(cnf *config.Config, _logger zerolog.Logger) *Core {
+func NewCore(cnf *config.Config) *Core {
+	_logger := zerolog.New(os.Stderr).
+		With().Str("package", "service").
+		Caller().Timestamp().Logger()
+
 	ntf := Core{
 		conf:        cnf,
 		Q:           NewFixedQueue(100),
-		notif:       make(chan string, 1),
+		notif:       make(chan string),
 		messageResp: make(chan string),
 		sellerMap:   sellerHard,
 		logger:      _logger,
-		reqChan:     make(chan request.Request, 100),
-		resChan:     make(chan *extract.ExtProductPrice, 100),
 	}
 
 	return &ntf
 
 }
 
-func (c *Core) ReConfig(maxRate int, duration int) error {
-	c.Q.Clear()
-	c.maxRate = maxRate
-	c.duration = duration
-
-	return nil
-}
-
-func (c *Core) Start() error {
-	dkpFile, err := os.Open("dkp.txt")
-	if err != nil {
-		panic(err)
-	}
-	defer dkpFile.Close()
-
-	var dkpList []string
-
-	scanner := bufio.NewScanner(dkpFile)
-	for scanner.Scan() {
-		line := scanner.Text()
-		dkpList = append(dkpList, line)
-	}
-
-	runTicker := time.NewTicker(time.Duration(c.maxRate) * time.Microsecond)
+func (c *Core) Start(maxRate int, duration int) error {
+	c.reqChan = make(chan request.Request, 100)
+	c.resChan = make(chan *extract.ExtProductPrice, 100)
+	runTicker := time.NewTicker(time.Duration(maxRate) * time.Microsecond)
 	checkTicker := time.NewTicker(c.conf.CheckInterval * time.Minute)
-	go c.run(runTicker, dkpList)
+	timeout := time.After(time.Duration(duration) * time.Minute)
 
-	timeout := time.After(time.Duration(c.duration) * time.Minute)
-
-	go func() {
-		defer checkTicker.Stop()
-		for {
-			select {
-			case <-checkTicker.C:
-				c.notif <- "log"
-				err := c.SendTelegramMessage(<-c.messageResp)
-				if err != nil {
-					c.logger.Error().
-						Err(err).
-						Msg("failed to send telegram message")
-				}
-
-			case <-timeout:
-				c.notif <- "done"
-				err := c.SendTelegramMessage(<-c.messageResp)
-				if err != nil {
-					c.logger.Error().
-						Err(err).
-						Msg("failed to send telegram message")
-				}
-				return
-			}
-		}
-	}()
+	go c.run(runTicker)
+	go c.manager(timeout, checkTicker)
 
 	return nil
 }
 
-func (c *Core) run(ticker *time.Ticker, dkpList []string) {
+func (c *Core) manager(timeout <-chan time.Time, checkTicker *time.Ticker) {
+	defer checkTicker.Stop()
+	for {
+		select {
+		case <-checkTicker.C:
+			c.notif <- "log"
+			err := c.SendTelegramMessage(<-c.messageResp)
+			if err != nil {
+				c.logger.Error().
+					Err(err).
+					Msg("failed to send telegram message")
+			}
+
+		case <-timeout:
+			c.notif <- "done"
+			err := c.SendTelegramMessage(<-c.messageResp)
+			if err != nil {
+				c.logger.Error().
+					Err(err).
+					Msg("failed to send telegram message")
+			}
+			return
+		}
+	}
+}
+
+func (c *Core) run(ticker *time.Ticker) {
 	number := 0
 	Err := 0
 	defer ticker.Stop()
@@ -149,8 +129,8 @@ func (c *Core) run(ticker *time.Ticker, dkpList []string) {
 
 		case req := <-c.notif:
 			if req == "done" {
-				c.messageResp <- "quit successfully!"
 				close(c.resChan)
+				c.messageResp <- "quit successfully!"
 				return
 			} else if req == "log" {
 				c.messageResp <- fmt.Sprintf("number of Request %d, number of Error %d", number, Err)
