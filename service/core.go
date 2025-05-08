@@ -138,9 +138,10 @@ func (c *Core) run(ticker *time.Ticker, dkpList []string) {
 						Str("dkp", dkp).
 						Msg("failed to extract data")
 				}
-				productPrice.Status = resp.StatusCode
-				c.resChan <- productPrice
 			}
+
+			productPrice.Status = resp.StatusCode
+			c.resChan <- productPrice
 
 		case req := <-c.notif:
 			if req == "done" {
