@@ -117,7 +117,11 @@ func (c *Core) run(ticker *time.Ticker, dkpList []string) {
 		case <-ticker.C:
 			productPrice := &extract.ExtProductPrice{}
 			number++
-			req := <-c.reqChan
+			req, ok := <-c.reqChan
+			if !ok {
+				c.logger.Info().Msg("req Channel closed by client")
+				break
+			}
 			dkp := req.DKP
 			colors := req.Colors
 
@@ -125,9 +129,9 @@ func (c *Core) run(ticker *time.Ticker, dkpList []string) {
 			resp, err := http.Get(url)
 			if err != nil {
 				Err++
-				c.Q.Add(fmt.Sprintf("[%d] DKP: %s | Error: %v\n", 1, dkp, err))
 				c.logger.Error().
 					Err(err).
+					Str("dkp", dkp).
 					Msg("failed to request digikala")
 
 			} else {
@@ -146,6 +150,7 @@ func (c *Core) run(ticker *time.Ticker, dkpList []string) {
 		case req := <-c.notif:
 			if req == "done" {
 				c.messageResp <- "quit successfully!"
+				close(c.resChan)
 				return
 			} else if req == "log" {
 				c.messageResp <- fmt.Sprintf("number of Request %d, number of Error %d", number, Err)
@@ -157,7 +162,7 @@ func (c *Core) run(ticker *time.Ticker, dkpList []string) {
 }
 
 func (c *Core) SendTelegramMessage(message string) error {
-	c.logger.Info().Msg(fmt.Sprintf("[telegram] %s...", message[:5]))
+	c.logger.Info().Msg(fmt.Sprintf("[telegram] %s...", message[:7]))
 	url := fmt.Sprintf(c.conf.TelegramAPIURL, c.conf.TelegramBotToken)
 
 	payload := map[string]string{
@@ -172,6 +177,6 @@ func (c *Core) SendTelegramMessage(message string) error {
 			Msg("failed to send telegram message")
 		return err
 	}
-	defer resp.Body.Close()
+	resp.Body.Close()
 	return nil
 }
