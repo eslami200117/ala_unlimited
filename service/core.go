@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/eslami200117/ala_unlimited/model/request"
+	pb "github.com/eslami200117/ala_unlimited/protocpb"
 	"net/http"
 	"os"
 	"sync"
@@ -17,6 +18,8 @@ import (
 )
 
 type Core struct {
+	pb.UnimplementedPriceServiceServer
+
 	conf        *config.Config
 	Q           *FixedQueue
 	running     bool
