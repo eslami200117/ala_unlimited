@@ -3,3 +3,4 @@ output.log
 config.json
 
 .idea
+protocpb/*.pb.go

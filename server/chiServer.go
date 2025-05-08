@@ -8,25 +8,21 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type AlaServerInterface interface {
-	ServeHTTP(http.ResponseWriter, *http.Request)
-}
-
-type AlaServer struct {
+type ChiServer struct {
 	route *chi.Mux
 }
 
-func NewAlaServer() *AlaServer {
-	return &AlaServer{
+func NewChiServer() *ChiServer {
+	return &ChiServer{
 		route: chi.NewRouter(),
 	}
 }
 
-func (s *AlaServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *ChiServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.route.ServeHTTP(w, r)
 }
 
-func (s *AlaServer) Initialize(api *handler.Api) {
+func (s *ChiServer) Initialize(api *handler.Api) {
 
 	go cronJobs()
 

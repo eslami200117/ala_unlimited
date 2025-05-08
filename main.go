@@ -27,11 +27,10 @@ func main() {
 
 	coreService := service.NewCore(conf)
 
-	server.StartGRPC(coreService)
+	go server.NewGRPCServer().StartGRPC(coreService)
 
 	api := handler.NewApi(coreService)
-
-	r := server.NewAlaServer()
+	r := server.NewChiServer()
 	r.Initialize(api)
 
 	logger.Info().
