@@ -7,6 +7,7 @@ import (
 	"github.com/eslami200117/ala_unlimited/model/request"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/eslami200117/ala_unlimited/config"
@@ -26,6 +27,7 @@ type Core struct {
 	logger      zerolog.Logger
 	reqQueue    chan request.Request
 	resQueue    chan *extract.ExtProductPrice
+	sellerMutex sync.RWMutex
 }
 
 var sellerHard = map[int]string{
@@ -43,8 +45,9 @@ func NewCore(cnf *config.Config) *Core {
 		Q:           NewFixedQueue(100),
 		notif:       make(chan string),
 		messageResp: make(chan string),
-		sellerMap:   sellerHard,
 		logger:      _logger,
+		sellerMap:   make(map[int]string),
+		sellerMutex: sync.RWMutex{},
 	}
 
 	return &ntf
@@ -179,5 +182,13 @@ func (c *Core) Quit() {
 	} else {
 		c.logger.Info().Msg("try to quit when it's already stopped")
 		c.messageResp <- "already stopped"
+	}
+}
+
+func (c *Core) SetSellers(sellers map[int]string) {
+	c.sellerMutex.Lock()
+	defer c.sellerMutex.Unlock()
+	for id, name := range sellers {
+		c.sellerMap[id] = name
 	}
 }

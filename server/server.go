@@ -35,6 +35,7 @@ func (s *AlaServer) Initialize(api *handler.Api) {
 		r.Use(middleware.Recoverer)
 		r.Get("/start", api.StartCore)
 		r.Get("/quit", api.QuitCore)
+		r.Post("/update_seller", api.UpdateSeller)
 	})
 
 	// s.route.Get("/dkp", func(w http.ResponseWriter, r *http.Request) {

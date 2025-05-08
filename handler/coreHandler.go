@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"github.com/rs/zerolog"
 	"net/http"
 	"os"
@@ -58,4 +59,27 @@ func (api *Api) StartCore(w http.ResponseWriter, r *http.Request) {
 func (api *Api) QuitCore(w http.ResponseWriter, _ *http.Request) {
 	api.core.Quit()
 	w.WriteHeader(http.StatusOK)
+}
+
+func (api *Api) UpdateSeller(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Only POST allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var update map[int]string
+	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	api.core.SetSellers(update)
+
+	api.logger.Info().Msg("sellerMap updated")
+	w.WriteHeader(http.StatusOK)
+	_, err := w.Write([]byte("sellerMap updated"))
+	if err != nil {
+		api.logger.Error().Err(err).Msg("write response failed")
+		return
+	}
 }

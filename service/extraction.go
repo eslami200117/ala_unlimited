@@ -60,7 +60,7 @@ func (c *Core) findPrice(colors []string, resp *http.Response) (result *extract.
 	defaultColor := productResp.Data.Product.DefaultVariant.Color.Title
 	defaultSellerID := int(productResp.Data.Product.DefaultVariant.Seller.ID)
 	for _, color := range colors {
-		variants := extractVariantsForColor(color, productResp.Data.Product.Variants, defaultColor, defaultSellerID, c.sellerMap)
+		variants := c.extractVariantsForColor(color, productResp.Data.Product.Variants, defaultColor, defaultSellerID, c.sellerMap)
 		if len(variants) > 0 {
 			result.Variants[color] = variants
 		}
@@ -71,9 +71,10 @@ func (c *Core) findPrice(colors []string, resp *http.Response) (result *extract.
 	return result, nil
 }
 
-func extractVariantsForColor(color string, variants []*VariantResponse, defaultColor string, defaultSellerID int, sellerMap map[int]string) []*extract.Variant {
+func (c *Core) extractVariantsForColor(color string, variants []*VariantResponse, defaultColor string, defaultSellerID int, sellerMap map[int]string) []*extract.Variant {
 	var result []*extract.Variant
-
+	c.sellerMutex.RLock()
+	defer c.sellerMutex.RUnlock()
 	for _, v := range variants {
 		if v.Color.Title == color {
 			sellerID := int(v.Seller.ID)
