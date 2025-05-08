@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package priceStream;
+
+option go_package = "github.com/eslami200117/ala_unlimited/protocpb";
+
+service PriceService {
+  rpc StreamPrices(stream Request) returns (stream ExtProductPrice);
+}
+
+message Request {
+  string dkp = 1;                  // corresponds to DKP
+  repeated string colors = 2;      // corresponds to Colors
+}
+
+message Variant {
+  string seller = 1;
+  int32 seller_id = 2;
+  int32 price = 3;
+  bool var_winer = 4;
+  int32 buy_box_seller_id = 5;
+  bool promotion = 6;
+}
+
+message ExtProductPrice {
+  int32 status = 1;
+  map<string, Variants> variants = 2;
+  int32 buy_box_price = 3;
+}
+
+message Variants {
+  repeated Variant items = 1; // workaround for map<string, repeated Variant>
+}
