@@ -18,8 +18,8 @@ import (
 type Core struct {
 	conf        *config.Config
 	Q           *FixedQueue
-	notif       chan string
-	messageResp chan string
+	Notif       chan string
+	MessageResp chan string
 	sellerMap   map[int]string
 	logger      zerolog.Logger
 	reqChan     chan request.Request
@@ -39,8 +39,8 @@ func NewCore(cnf *config.Config) *Core {
 	ntf := Core{
 		conf:        cnf,
 		Q:           NewFixedQueue(100),
-		notif:       make(chan string),
-		messageResp: make(chan string),
+		Notif:       make(chan string),
+		MessageResp: make(chan string),
 		sellerMap:   sellerHard,
 		logger:      _logger,
 	}
@@ -67,8 +67,8 @@ func (c *Core) manager(timeout <-chan time.Time, checkTicker *time.Ticker) {
 	for {
 		select {
 		case <-checkTicker.C:
-			c.notif <- "log"
-			err := c.SendTelegramMessage(<-c.messageResp)
+			c.Notif <- "log"
+			err := c.SendTelegramMessage(<-c.MessageResp)
 			if err != nil {
 				c.logger.Error().
 					Err(err).
@@ -76,8 +76,8 @@ func (c *Core) manager(timeout <-chan time.Time, checkTicker *time.Ticker) {
 			}
 
 		case <-timeout:
-			c.notif <- "done"
-			err := c.SendTelegramMessage(<-c.messageResp)
+			c.Notif <- "done"
+			err := c.SendTelegramMessage(<-c.MessageResp)
 			if err != nil {
 				c.logger.Error().
 					Err(err).
@@ -127,13 +127,13 @@ func (c *Core) run(ticker *time.Ticker) {
 			productPrice.Status = resp.StatusCode
 			c.resChan <- productPrice
 
-		case req := <-c.notif:
+		case req := <-c.Notif:
 			if req == "done" {
 				close(c.resChan)
-				c.messageResp <- "quit successfully!"
+				c.MessageResp <- "quit successfully!"
 				return
 			} else if req == "log" {
-				c.messageResp <- fmt.Sprintf("number of Request %d, number of Error %d", number, Err)
+				c.MessageResp <- fmt.Sprintf("number of Request %d, number of Error %d", number, Err)
 				number = 0
 				Err = 0
 			}

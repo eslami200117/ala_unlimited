@@ -30,10 +30,11 @@ func (s *AlaServer) Initialize(api *handler.Api) {
 
 	go cronJobs()
 
-	s.route.Route("/test", func(r chi.Router) {
+	s.route.Route("/api", func(r chi.Router) {
 		r.Use(middleware.Logger)
-		// r.Use(middleware.Recoverer)
-		r.Get("/start", api.StartTest)
+		r.Use(middleware.Recoverer)
+		r.Get("/start", api.StartCore)
+		r.Get("/quit", api.QuitCore)
 	})
 
 	// s.route.Get("/dkp", func(w http.ResponseWriter, r *http.Request) {
