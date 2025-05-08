@@ -26,6 +26,9 @@ func main() {
 	}
 
 	coreService := service.NewCore(conf)
+
+	server.StartGRPC(coreService)
+
 	api := handler.NewApi(coreService)
 
 	r := server.NewAlaServer()

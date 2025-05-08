@@ -16,13 +16,13 @@ type Api struct {
 	logger zerolog.Logger
 }
 
-func NewApi(notifi *service.Core) *Api {
+func NewApi(_coer *service.Core) *Api {
 	_logger := zerolog.New(os.Stderr).
 		With().Str("package", "api").
 		Caller().Timestamp().Logger()
 
 	return &Api{
-		core:   notifi,
+		core:   _coer,
 		logger: _logger,
 	}
 }
