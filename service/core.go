@@ -33,11 +33,6 @@ type Core struct {
 	sellerMutex sync.RWMutex
 }
 
-var sellerHard = map[int]string{
-	1105946: "تک ترند",
-	1720400: "پاورتک شاپ",
-}
-
 func NewCore(cnf *config.Config) *Core {
 	_logger := zerolog.New(os.Stderr).
 		With().Str("package", "service").
@@ -174,7 +169,14 @@ func (c *Core) SendTelegramMessage(message string) error {
 			Msg("failed to send telegram message")
 		return err
 	}
-	resp.Body.Close()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			c.logger.Error().
+				Err(err).
+				Msg("failed to close response body")
+		}
+	}()
 	return nil
 }
 
