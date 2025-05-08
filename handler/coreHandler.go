@@ -55,13 +55,7 @@ func (api *Api) StartCore(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (api *Api) QuitCore(w http.ResponseWriter, r *http.Request) {
-	api.core.Notif <- "quit"
-	_, err := w.Write([]byte(<-api.core.MessageResp))
-	if err != nil {
-		api.logger.Error().Err(err).Msg("Write failed")
-		http.Error(w, "Write failed", http.StatusInternalServerError)
-		return
-	}
+func (api *Api) QuitCore(w http.ResponseWriter, _ *http.Request) {
+	api.core.Quit()
 	w.WriteHeader(http.StatusOK)
 }

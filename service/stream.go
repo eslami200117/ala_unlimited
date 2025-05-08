@@ -14,7 +14,7 @@ func (c *Core) StreamPrices(stream pb.PriceService_StreamPricesServer) error {
 			req, err := stream.Recv()
 			if err != nil {
 				if err == io.EOF {
-					close(c.reqChan)
+					close(c.reqQueue)
 					return
 				}
 				c.logger.Error().Err(err).Msg("error receiving from stream")
@@ -25,12 +25,12 @@ func (c *Core) StreamPrices(stream pb.PriceService_StreamPricesServer) error {
 				DKP:    req.Dkp,
 				Colors: req.Colors,
 			}
-			c.reqChan <- converted
+			c.reqQueue <- converted
 		}
 	}()
 
 	// Server → Client
-	for res := range c.resChan {
+	for res := range c.resQueue {
 
 		if err := stream.Send(convertToPb(res)); err != nil {
 			c.logger.Error().Err(err).Msg("error sending to stream")

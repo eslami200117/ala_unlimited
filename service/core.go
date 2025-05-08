@@ -18,12 +18,14 @@ import (
 type Core struct {
 	conf        *config.Config
 	Q           *FixedQueue
-	Notif       chan string
-	MessageResp chan string
+	running     bool
+	done        chan struct{}
+	notif       chan string
+	messageResp chan string
 	sellerMap   map[int]string
 	logger      zerolog.Logger
-	reqChan     chan request.Request
-	resChan     chan *extract.ExtProductPrice
+	reqQueue    chan request.Request
+	resQueue    chan *extract.ExtProductPrice
 }
 
 var sellerHard = map[int]string{
@@ -39,8 +41,8 @@ func NewCore(cnf *config.Config) *Core {
 	ntf := Core{
 		conf:        cnf,
 		Q:           NewFixedQueue(100),
-		Notif:       make(chan string),
-		MessageResp: make(chan string),
+		notif:       make(chan string),
+		messageResp: make(chan string),
 		sellerMap:   sellerHard,
 		logger:      _logger,
 	}
@@ -50,34 +52,42 @@ func NewCore(cnf *config.Config) *Core {
 }
 
 func (c *Core) Start(maxRate int, duration int) error {
-	c.reqChan = make(chan request.Request, 100)
-	c.resChan = make(chan *extract.ExtProductPrice, 100)
+	c.reqQueue = make(chan request.Request, 100)
+	c.resQueue = make(chan *extract.ExtProductPrice, 100)
+	c.running = true
 	runTicker := time.NewTicker(time.Duration(maxRate) * time.Microsecond)
 	checkTicker := time.NewTicker(c.conf.CheckInterval * time.Minute)
 	timeout := time.After(time.Duration(duration) * time.Minute)
+	go func() {
+		<-timeout
+		if c.running {
+			c.done <- struct{}{}
+			close(c.done)
+		}
+	}()
 
 	go c.run(runTicker)
-	go c.manager(timeout, checkTicker)
+	go c.manager(checkTicker)
 
 	return nil
 }
 
-func (c *Core) manager(timeout <-chan time.Time, checkTicker *time.Ticker) {
+func (c *Core) manager(checkTicker *time.Ticker) {
 	defer checkTicker.Stop()
 	for {
 		select {
 		case <-checkTicker.C:
-			c.Notif <- "log"
-			err := c.SendTelegramMessage(<-c.MessageResp)
+			c.notif <- "log"
+			err := c.SendTelegramMessage(<-c.messageResp)
 			if err != nil {
 				c.logger.Error().
 					Err(err).
 					Msg("failed to send telegram message")
 			}
 
-		case <-timeout:
-			c.Notif <- "done"
-			err := c.SendTelegramMessage(<-c.MessageResp)
+		case <-c.done:
+			c.notif <- "done"
+			err := c.SendTelegramMessage(<-c.messageResp)
 			if err != nil {
 				c.logger.Error().
 					Err(err).
@@ -97,7 +107,7 @@ func (c *Core) run(ticker *time.Ticker) {
 		case <-ticker.C:
 			productPrice := &extract.ExtProductPrice{}
 			number++
-			req, ok := <-c.reqChan
+			req, ok := <-c.reqQueue
 			if !ok {
 				c.logger.Info().Msg("req Channel closed by client")
 				break
@@ -125,15 +135,16 @@ func (c *Core) run(ticker *time.Ticker) {
 			}
 
 			productPrice.Status = resp.StatusCode
-			c.resChan <- productPrice
+			c.resQueue <- productPrice
 
-		case req := <-c.Notif:
+		case req := <-c.notif:
 			if req == "done" {
-				close(c.resChan)
-				c.MessageResp <- "quit successfully!"
+				close(c.resQueue)
+				c.running = false
+				c.messageResp <- "quit successfully!"
 				return
 			} else if req == "log" {
-				c.MessageResp <- fmt.Sprintf("number of Request %d, number of Error %d", number, Err)
+				c.messageResp <- fmt.Sprintf("number of Request %d, number of Error %d", number, Err)
 				number = 0
 				Err = 0
 			}
@@ -159,4 +170,14 @@ func (c *Core) SendTelegramMessage(message string) error {
 	}
 	resp.Body.Close()
 	return nil
+}
+
+func (c *Core) Quit() {
+	if c.running {
+		c.done <- struct{}{}
+		c.logger.Info().Msg("quit successfully")
+	} else {
+		c.logger.Info().Msg("try to quit when it's already stopped")
+		c.messageResp <- "already stopped"
+	}
 }
