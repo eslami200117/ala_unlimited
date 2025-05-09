@@ -87,6 +87,7 @@ func convertToPb(res *extract.ExtProductPrice) *pb.ExtProductPrice {
 
 	converted := &pb.ExtProductPrice{
 		Status:      int32(res.Status),
+		Dkp:		 int32(res.DKP),
 		BuyBoxPrice: int32(res.BuyBoxPrice),
 		Variants:    make(map[string]*pb.Variants),
 	}

@@ -11,6 +11,7 @@ type Variant struct {
 
 type ExtProductPrice struct {
 	Status      int                   `json:"status"`
+	DKP			int					  `json:"dkp"`
 	Variants    map[string][]*Variant `json:"variants"`
 	BuyBoxPrice int                   `json:"buy_box_price"`
 }

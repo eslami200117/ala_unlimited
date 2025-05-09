@@ -58,8 +58,11 @@ func (c *Core) Start(maxRate, duration int) error {
 	c.reqQueue = make(chan request.Request, 64)
 	c.resQueue = make(chan *extract.ExtProductPrice, 64)
 	c.running = true
-
+	
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(duration)*time.Minute)
+	if duration == 0 {
+		ctx, cancel = context.WithCancel(context.Background())
+	}
 	c.cancel = cancel
 
 	runTicker := time.NewTicker(time.Duration(maxRate) * time.Microsecond)

@@ -24,8 +24,9 @@ message Variant {
 
 message ExtProductPrice {
   int32 status = 1;
-  map<string, Variants> variants = 2;
-  int32 buy_box_price = 3;
+  int32 dkp = 2;
+  map<string, Variants> variants = 3;
+  int32 buy_box_price = 4;
 }
 
 message Variants {
