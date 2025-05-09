@@ -53,8 +53,8 @@ func NewCore(cnf *config.Config) *Core {
 }
 
 func (c *Core) Start(maxRate int, duration int) error {
-	c.reqQueue = make(chan request.Request, 100)
-	c.resQueue = make(chan *extract.ExtProductPrice, 100)
+	c.reqQueue = make(chan request.Request, 64)
+	c.resQueue = make(chan *extract.ExtProductPrice, 64)
 	c.running = true
 	runTicker := time.NewTicker(time.Duration(maxRate) * time.Microsecond)
 	checkTicker := time.NewTicker(c.conf.CheckInterval * time.Minute)
