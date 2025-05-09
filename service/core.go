@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/eslami200117/ala_unlimited/model/request"
@@ -20,10 +21,10 @@ import (
 type Core struct {
 	pb.UnimplementedPriceServiceServer
 
-	conf        *config.Config
-	Q           *FixedQueue
-	running     bool
-	done        chan struct{}
+	conf    *config.Config
+	Q       *FixedQueue
+	running bool
+	//done        chan struct{}
 	notif       chan string
 	messageResp chan string
 	sellerMap   map[int]string
@@ -31,6 +32,7 @@ type Core struct {
 	reqQueue    chan request.Request
 	resQueue    chan *extract.ExtProductPrice
 	sellerMutex sync.RWMutex
+	cancel      context.CancelFunc
 }
 
 func NewCore(cnf *config.Config) *Core {
@@ -52,44 +54,41 @@ func NewCore(cnf *config.Config) *Core {
 
 }
 
-func (c *Core) Start(maxRate int, duration int) error {
+func (c *Core) Start(maxRate, duration int) error {
 	c.reqQueue = make(chan request.Request, 64)
 	c.resQueue = make(chan *extract.ExtProductPrice, 64)
 	c.running = true
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(duration)*time.Minute)
+	c.cancel = cancel
+
 	runTicker := time.NewTicker(time.Duration(maxRate) * time.Microsecond)
 	checkTicker := time.NewTicker(c.conf.CheckInterval * time.Minute)
-	timeout := time.After(time.Duration(duration) * time.Minute)
-	go func() {
-		<-timeout
-		if c.running {
-			c.done <- struct{}{}
-			close(c.done)
-		}
-	}()
 
-	go c.run(runTicker)
-	go c.manager(checkTicker)
+	go c.run(ctx, runTicker)
+	go c.manager(ctx, checkTicker)
 
 	return nil
 }
 
-func (c *Core) manager(checkTicker *time.Ticker) {
+func (c *Core) manager(ctx context.Context, checkTicker *time.Ticker) {
 	defer checkTicker.Stop()
+
 	for {
 		select {
 		case <-checkTicker.C:
 			c.notif <- "log"
-			err := c.SendTelegramMessage(<-c.messageResp)
-			if err != nil {
+			msg := <-c.messageResp
+			if err := c.SendTelegramMessage(msg); err != nil {
 				c.logger.Error().
 					Err(err).
 					Msg("failed to send telegram message")
 			}
 
-		case <-c.done:
+		case <-ctx.Done():
 			c.notif <- "done"
-			err := c.SendTelegramMessage(<-c.messageResp)
-			if err != nil {
+			msg := <-c.messageResp
+			if err := c.SendTelegramMessage(msg); err != nil {
 				c.logger.Error().
 					Err(err).
 					Msg("failed to send telegram message")
@@ -99,60 +98,68 @@ func (c *Core) manager(checkTicker *time.Ticker) {
 	}
 }
 
-func (c *Core) run(ticker *time.Ticker) {
-	number := 0
-	Err := 0
+func (c *Core) run(ctx context.Context, ticker *time.Ticker) {
+	var (
+		requestCount = 0
+		errorCount   = 0
+	)
 	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ticker.C:
-			productPrice := &extract.ExtProductPrice{}
-			number++
 			req, ok := <-c.reqQueue
 			if !ok {
-				c.logger.Info().Msg("req Channel closed by client")
-				break
+				c.logger.Info().Msg("request channel closed")
+				return
 			}
-			dkp := req.DKP
-			colors := req.Colors
 
-			url := fmt.Sprintf(c.conf.DigiKalaAPIURL, dkp)
+			requestCount++
+			productPrice := &extract.ExtProductPrice{}
+
+			url := fmt.Sprintf(c.conf.DigiKalaAPIURL, req.DKP)
 			resp, err := http.Get(url)
 			if err != nil {
-				Err++
+				errorCount++
 				c.logger.Error().
 					Err(err).
-					Str("dkp", dkp).
+					Str("dkp", req.DKP).
 					Msg("failed to request digikala")
-
 			} else {
-				productPrice, err = c.findPrice(colors, resp)
-				if err != nil {
+				var extractErr error
+				productPrice, extractErr = c.findPrice(req.Colors, resp)
+				if extractErr != nil {
 					c.logger.Error().
-						Err(err).
-						Str("dkp", dkp).
+						Err(extractErr).
+						Str("dkp", req.DKP).
 						Msg("failed to extract data")
 				}
+				productPrice.Status = resp.StatusCode
 			}
 
-			productPrice.Status = resp.StatusCode
+			// Always send a response regardless of error state
 			c.resQueue <- productPrice
 
 		case req := <-c.notif:
-			if req == "done" {
+			switch req {
+			case "done":
 				close(c.resQueue)
 				c.running = false
 				c.messageResp <- "quit successfully!"
 				return
-			} else if req == "log" {
-				c.messageResp <- fmt.Sprintf("number of Request %d, number of Error %d", number, Err)
-				number = 0
-				Err = 0
+			case "log":
+				c.messageResp <- fmt.Sprintf("number of requests: %d, number of errors: %d", requestCount, errorCount)
+				requestCount = 0
+				errorCount = 0
 			}
+
+		case <-ctx.Done():
+			close(c.resQueue)
+			c.running = false
+			return
 		}
 	}
 }
-
 func (c *Core) SendTelegramMessage(message string) error {
 	c.logger.Info().Msg(fmt.Sprintf("[telegram] %s...", message[:7]))
 	url := fmt.Sprintf(c.conf.TelegramAPIURL, c.conf.TelegramBotToken)
@@ -182,7 +189,7 @@ func (c *Core) SendTelegramMessage(message string) error {
 
 func (c *Core) Quit() {
 	if c.running {
-		c.done <- struct{}{}
+		c.cancel()
 		c.logger.Info().Msg("quit successfully")
 	} else {
 		c.logger.Info().Msg("try to quit when it's already stopped")
