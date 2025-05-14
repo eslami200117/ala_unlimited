@@ -13,8 +13,8 @@ import (
 type ProductResponse struct {
 	Data struct {
 		Product struct {
-			Variants       []*VariantResponse `json:"variants"`
-			DefaultVariant VariantResponse    `json:"default_variant"`
+			Variants       []*VariantResponse  `json:"variants"`
+			DefaultVariant *VariantResponse    `json:"default_variant"` // Changed to pointer to make it nullable
 		} `json:"product"`
 	} `json:"data"`
 }
@@ -54,11 +54,17 @@ func (c *Core) findPrice(colors []string, resp *http.Response) (result *extract.
 	if err := json.Unmarshal(body, &productResp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-
-	result.BuyBoxPrice = int(productResp.Data.Product.DefaultVariant.Price.SellingPrice) / 10
-
-	defaultColor := productResp.Data.Product.DefaultVariant.Color.Title
-	defaultSellerID := int(productResp.Data.Product.DefaultVariant.Seller.ID)
+	
+	// Handle the case where DefaultVariant might be nil
+	var defaultColor string
+	var defaultSellerID int
+	
+	if productResp.Data.Product.DefaultVariant != nil {
+		result.BuyBoxPrice = int(productResp.Data.Product.DefaultVariant.Price.SellingPrice) / 10
+		defaultColor = productResp.Data.Product.DefaultVariant.Color.Title
+		defaultSellerID = int(productResp.Data.Product.DefaultVariant.Seller.ID)
+	}
+	
 	for _, color := range colors {
 		variants := c.extractVariantsForColor(color, productResp.Data.Product.Variants, defaultColor, defaultSellerID, c.sellerMap)
 		if len(variants) > 0 {

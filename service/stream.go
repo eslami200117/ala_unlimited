@@ -41,7 +41,6 @@ func (c *Core) StreamPrices(stream pb.PriceService_StreamPricesServer) error {
 
 				select {
 				case c.reqQueue <- converted:
-					// Successfully sent to queue
 				case <-ctx.Done():
 					return
 				}
@@ -60,13 +59,11 @@ func (c *Core) StreamPrices(stream pb.PriceService_StreamPricesServer) error {
 		select {
 		case err, ok := <-errCh:
 			if !ok {
-				// errCh closed, normal exit
 				continue
 			}
 			return err
 		case res, ok := <-c.resQueue:
 			if !ok {
-				// c.resQueue closed, normal exit
 				return nil
 			}
 			if err := stream.Send(convertToPb(res)); err != nil {

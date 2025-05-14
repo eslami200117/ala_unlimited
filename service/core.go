@@ -22,10 +22,9 @@ import (
 type Core struct {
 	pb.UnimplementedPriceServiceServer
 
-	conf    *config.Config
-	Q       *FixedQueue
-	running bool
-	//done        chan struct{}
+	conf    	*config.Config
+	Q       	*FixedQueue
+	running 	bool
 	notif       chan string
 	messageResp chan string
 	sellerMap   map[int]string
@@ -88,16 +87,6 @@ func (c *Core) manager(ctx context.Context, checkTicker *time.Ticker) {
 					Err(err).
 					Msg("failed to send telegram message")
 			}
-
-		case <-ctx.Done():
-			c.notif <- "done"
-			msg := <-c.messageResp
-			if err := c.SendTelegramMessage(msg); err != nil {
-				c.logger.Error().
-					Err(err).
-					Msg("failed to send telegram message")
-			}
-			return
 		}
 	}
 }
@@ -129,6 +118,7 @@ func (c *Core) run(ctx context.Context, ticker *time.Ticker) {
 					Err(err).
 					Str("dkp", strconv.Itoa(req.DKP)).
 					Msg("failed to request digikala")
+				continue
 			} else {
 				var extractErr error
 				productPrice, extractErr = c.findPrice(req.Colors, resp)
@@ -137,6 +127,7 @@ func (c *Core) run(ctx context.Context, ticker *time.Ticker) {
 						Err(extractErr).
 						Str("dkp", strconv.Itoa(req.DKP)).
 						Msg("failed to extract data")
+					continue
 				}
 				productPrice.Status = resp.StatusCode
 			}
