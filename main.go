@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/eslami200117/ala_unlimited/config"
-	"github.com/rs/zerolog"
 	"net/http"
 	"os"
+	"time"
+
+	"github.com/eslami200117/ala_unlimited/config"
+	"github.com/rs/zerolog"
 
 	"github.com/eslami200117/ala_unlimited/handler"
 	"github.com/eslami200117/ala_unlimited/server"
@@ -13,7 +15,7 @@ import (
 )
 
 func main() {
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	zerolog.TimeFieldFormat = time.RFC3339
 	logger := zerolog.New(os.Stderr).
 		With().Str("package", "main").
 		Caller().Timestamp().Logger()
