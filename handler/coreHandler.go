@@ -53,6 +53,12 @@ func (api *Api) StartCore(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error in Start", http.StatusBadRequest)
 		return
 	}
+	api.logger.Info().
+		Str("remote", r.RemoteAddr).
+		Str("duration", durationStr).
+		Str("maxRate", maxRateStr).
+		Msg("core started")
+
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -82,4 +88,8 @@ func (api *Api) UpdateSeller(w http.ResponseWriter, r *http.Request) {
 		api.logger.Error().Err(err).Msg("write response failed")
 		return
 	}
+
+		api.logger.Info().
+		Str("remote", r.RemoteAddr).
+		Msg("update seller successfully")
 }
