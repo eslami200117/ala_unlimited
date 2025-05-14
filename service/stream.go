@@ -35,7 +35,7 @@ func (c *Core) StreamPrices(stream pb.PriceService_StreamPricesServer) error {
 				}
 
 				converted := request.Request{
-					DKP:    req.Dkp,
+					DKP:    int(req.Dkp),
 					Colors: req.Colors,
 				}
 

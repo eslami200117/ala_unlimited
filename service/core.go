@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"github.com/eslami200117/ala_unlimited/model/request"
 	pb "github.com/eslami200117/ala_unlimited/protocpb"
 	"net/http"
@@ -126,7 +127,7 @@ func (c *Core) run(ctx context.Context, ticker *time.Ticker) {
 				errorCount++
 				c.logger.Error().
 					Err(err).
-					Str("dkp", req.DKP).
+					Str("dkp", strconv.Itoa(req.DKP)).
 					Msg("failed to request digikala")
 			} else {
 				var extractErr error
@@ -134,7 +135,7 @@ func (c *Core) run(ctx context.Context, ticker *time.Ticker) {
 				if extractErr != nil {
 					c.logger.Error().
 						Err(extractErr).
-						Str("dkp", req.DKP).
+						Str("dkp", strconv.Itoa(req.DKP)).
 						Msg("failed to extract data")
 				}
 				productPrice.Status = resp.StatusCode

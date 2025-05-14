@@ -9,7 +9,7 @@ service PriceService {
 }
 
 message Request {
-  string dkp = 1;                  // corresponds to DKP
+  int32 dkp = 1;                  // corresponds to DKP
   repeated string colors = 2;      // corresponds to Colors
 }
 
