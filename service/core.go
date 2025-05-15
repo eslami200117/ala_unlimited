@@ -5,11 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"github.com/eslami200117/ala_unlimited/model/request"
 	pb "github.com/eslami200117/ala_unlimited/protocpb"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -22,9 +22,9 @@ import (
 type Core struct {
 	pb.UnimplementedPriceServiceServer
 
-	conf    	*config.Config
-	Q       	*FixedQueue
-	running 	bool
+	conf        *config.Config
+	Q           *FixedQueue
+	running     bool
 	notif       chan string
 	messageResp chan string
 	sellerMap   map[int]string
@@ -58,7 +58,7 @@ func (c *Core) Start(maxRate, duration int) error {
 	c.reqQueue = make(chan request.Request, 64)
 	c.resQueue = make(chan *extract.ExtProductPrice, 64)
 	c.running = true
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(duration)*time.Minute)
 	if duration == 0 {
 		ctx, cancel = context.WithCancel(context.Background())

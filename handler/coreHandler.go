@@ -89,7 +89,7 @@ func (api *Api) UpdateSeller(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-		api.logger.Info().
+	api.logger.Info().
 		Str("remote", r.RemoteAddr).
 		Msg("update seller successfully")
 }

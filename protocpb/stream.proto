@@ -17,7 +17,7 @@ message Variant {
   string seller = 1;
   int32 seller_id = 2;
   int32 price = 3;
-  bool var_winer = 4;
+  bool var_winner = 4;
   int32 buy_box_seller_id = 5;
   bool promotion = 6;
 }

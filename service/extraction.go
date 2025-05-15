@@ -13,8 +13,9 @@ import (
 type ProductResponse struct {
 	Data struct {
 		Product struct {
-			Variants       []*VariantResponse  `json:"variants"`
-			DefaultVariant *VariantResponse    `json:"default_variant"` // Changed to pointer to make it nullable
+			ID             float64            `json:"id"`
+			Variants       []*VariantResponse `json:"variants"`
+			DefaultVariant *VariantResponse   `json:"default_variant"` // Changed to pointer to make it nullable
 		} `json:"product"`
 	} `json:"data"`
 }
@@ -54,17 +55,18 @@ func (c *Core) findPrice(colors []string, resp *http.Response) (result *extract.
 	if err := json.Unmarshal(body, &productResp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-	
+
 	// Handle the case where DefaultVariant might be nil
 	var defaultColor string
 	var defaultSellerID int
-	
+
 	if productResp.Data.Product.DefaultVariant != nil {
+		result.DKP = int(productResp.Data.Product.ID)
 		result.BuyBoxPrice = int(productResp.Data.Product.DefaultVariant.Price.SellingPrice) / 10
 		defaultColor = productResp.Data.Product.DefaultVariant.Color.Title
 		defaultSellerID = int(productResp.Data.Product.DefaultVariant.Seller.ID)
 	}
-	
+
 	for _, color := range colors {
 		variants := c.extractVariantsForColor(color, productResp.Data.Product.Variants, defaultColor, defaultSellerID, c.sellerMap)
 		if len(variants) > 0 {
@@ -86,12 +88,11 @@ func (c *Core) extractVariantsForColor(color string, variants []*VariantResponse
 			sellerID := int(v.Seller.ID)
 
 			variant := &extract.Variant{
-				Seller:    sellerMap[sellerID],
-				SellerID:  sellerID,
-				Price:     int(v.Price.SellingPrice) / 10,
-				VarWiner:  color == defaultColor,
-				Promotion: v.Price.IsPromotion,
-				// Note: BuyBoxSellerID is set as an empty string since it wasn't properly used in the original
+				Seller:         sellerMap[sellerID],
+				SellerID:       sellerID,
+				Price:          int(v.Price.SellingPrice) / 10,
+				VarWinner:      color == defaultColor,
+				Promotion:      v.Price.IsPromotion,
 				BuyBoxSellerID: defaultSellerID,
 			}
 
