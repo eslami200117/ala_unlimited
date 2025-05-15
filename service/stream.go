@@ -33,7 +33,6 @@ func (c *Core) StreamPrices(stream pb.PriceService_StreamPricesServer) error {
 					errCh <- err
 					return
 				}
-
 				converted := request.Request{
 					DKP:    int(req.Dkp),
 					Colors: req.Colors,
@@ -42,6 +41,7 @@ func (c *Core) StreamPrices(stream pb.PriceService_StreamPricesServer) error {
 				select {
 				case c.reqQueue <- converted:
 				case <-ctx.Done():
+					c.logger.Info().Msg("StreamPrices context canceled")
 					return
 				}
 			}

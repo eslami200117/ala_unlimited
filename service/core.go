@@ -1,9 +1,7 @@
 package service
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/eslami200117/ala_unlimited/model/request"
 	pb "github.com/eslami200117/ala_unlimited/protocpb"
@@ -22,17 +20,19 @@ import (
 type Core struct {
 	pb.UnimplementedPriceServiceServer
 
-	conf        *config.Config
-	Q           *FixedQueue
-	running     bool
-	notif       chan string
-	messageResp chan string
-	sellerMap   map[int]string
-	logger      zerolog.Logger
-	reqQueue    chan request.Request
-	resQueue    chan *extract.ExtProductPrice
-	sellerMutex sync.RWMutex
-	cancel      context.CancelFunc
+	conf         *config.Config
+	Q            *FixedQueue
+	running      bool
+	notif        chan string
+	messageResp  chan string
+	sellerMap    map[int]string
+	logger       zerolog.Logger
+	reqQueue     chan request.Request
+	resQueue     chan *extract.ExtProductPrice
+	sellerMutex  sync.RWMutex
+	cancel       context.CancelFunc
+	requestCount int
+	errorCount   int
 }
 
 func NewCore(cnf *config.Config) *Core {
@@ -40,7 +40,7 @@ func NewCore(cnf *config.Config) *Core {
 		With().Str("package", "service").
 		Caller().Timestamp().Logger()
 
-	ntf := Core{
+	ntf := &Core{
 		conf:        cnf,
 		Q:           NewFixedQueue(100),
 		notif:       make(chan string),
@@ -50,13 +50,14 @@ func NewCore(cnf *config.Config) *Core {
 		sellerMutex: sync.RWMutex{},
 	}
 
-	return &ntf
+	go ntf.messaging()
+	return ntf
 
 }
 
 func (c *Core) Start(maxRate, duration int) error {
-	c.reqQueue = make(chan request.Request, 64)
-	c.resQueue = make(chan *extract.ExtProductPrice, 64)
+	c.reqQueue = make(chan request.Request, 256)
+	c.resQueue = make(chan *extract.ExtProductPrice, 256)
 	c.running = true
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(duration)*time.Minute)
@@ -76,6 +77,8 @@ func (c *Core) Start(maxRate, duration int) error {
 
 func (c *Core) manager(ctx context.Context, checkTicker *time.Ticker) {
 	defer checkTicker.Stop()
+	c.notif = make(chan string)
+	c.messageResp = make(chan string)
 
 	for {
 		select {
@@ -87,15 +90,16 @@ func (c *Core) manager(ctx context.Context, checkTicker *time.Ticker) {
 					Err(err).
 					Msg("failed to send telegram message")
 			}
+		case <-ctx.Done():
+			c.logger.Info().Msg("manager is stopping")
+			return
 		}
 	}
 }
 
 func (c *Core) run(ctx context.Context, ticker *time.Ticker) {
-	var (
-		requestCount = 0
-		errorCount   = 0
-	)
+	c.requestCount = 0
+	c.errorCount = 0
 	defer ticker.Stop()
 
 	for {
@@ -107,13 +111,13 @@ func (c *Core) run(ctx context.Context, ticker *time.Ticker) {
 				return
 			}
 
-			requestCount++
+			c.requestCount++
 			productPrice := &extract.ExtProductPrice{}
 
 			url := fmt.Sprintf(c.conf.DigiKalaAPIURL, req.DKP)
 			resp, err := http.Get(url)
 			if err != nil {
-				errorCount++
+				c.errorCount++
 				c.logger.Error().
 					Err(err).
 					Str("dkp", strconv.Itoa(req.DKP)).
@@ -135,51 +139,13 @@ func (c *Core) run(ctx context.Context, ticker *time.Ticker) {
 			// Always send a response regardless of error state
 			c.resQueue <- productPrice
 
-		case req := <-c.notif:
-			switch req {
-			case "done":
-				close(c.resQueue)
-				c.running = false
-				c.messageResp <- "quit successfully!"
-				return
-			case "log":
-				c.messageResp <- fmt.Sprintf("number of requests: %d, number of errors: %d", requestCount, errorCount)
-				requestCount = 0
-				errorCount = 0
-			}
-
 		case <-ctx.Done():
 			close(c.resQueue)
+			close(c.reqQueue)
 			c.running = false
 			return
 		}
 	}
-}
-func (c *Core) SendTelegramMessage(message string) error {
-	c.logger.Info().Msg(fmt.Sprintf("[telegram] %s...", message[:7]))
-	url := fmt.Sprintf(c.conf.TelegramAPIURL, c.conf.TelegramBotToken)
-
-	payload := map[string]string{
-		"chat_id": c.conf.TelegramChatID,
-		"text":    message,
-	}
-	jsonData, _ := json.Marshal(payload)
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
-	if err != nil {
-		c.logger.Error().
-			Err(err).
-			Msg("failed to send telegram message")
-		return err
-	}
-	defer func() {
-		err := resp.Body.Close()
-		if err != nil {
-			c.logger.Error().
-				Err(err).
-				Msg("failed to close response body")
-		}
-	}()
-	return nil
 }
 
 func (c *Core) Quit() {
