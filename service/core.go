@@ -48,6 +48,8 @@ func NewCore(cnf *config.Config) *Core {
 		logger:      _logger,
 		sellerMap:   make(map[int]string),
 		sellerMutex: sync.RWMutex{},
+		reqQueue: 	 make(chan request.Request, 128),
+		resQueue: 	 make(chan *extract.ExtProductPrice, 128),
 	}
 
 	go ntf.messaging()
@@ -56,8 +58,6 @@ func NewCore(cnf *config.Config) *Core {
 }
 
 func (c *Core) Start(maxRate, duration int) error {
-	c.reqQueue = make(chan request.Request, 256)
-	c.resQueue = make(chan *extract.ExtProductPrice, 256)
 	c.running = true
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(duration)*time.Minute)
