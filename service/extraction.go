@@ -86,9 +86,12 @@ func (c *Core) extractVariantsForColor(color string, variants []*VariantResponse
 	for _, v := range variants {
 		if v.Color.Title == color {
 			sellerID := int(v.Seller.ID)
-
+			sellerName := sellerMap[sellerID]
+			if _, exists := sellerMap[sellerID]; !exists {
+				sellerName = "False"
+			}
 			variant := &extract.Variant{
-				Seller:         sellerMap[sellerID],
+				Seller:         sellerName,
 				SellerID:       sellerID,
 				Price:          int(v.Price.SellingPrice) / 10,
 				VarWinner:      color == defaultColor,
