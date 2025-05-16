@@ -1,12 +1,13 @@
 package server
 
 import (
+	"net"
+
+	"github.com/eslami200117/ala_unlimited/pkg/comm"
 	"github.com/eslami200117/ala_unlimited/protocpb"
 	"github.com/eslami200117/ala_unlimited/service"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
-	"net"
-	"os"
 )
 
 type GRPCServer struct {
@@ -14,12 +15,9 @@ type GRPCServer struct {
 }
 
 func NewGRPCServer() *GRPCServer {
-	_logger := zerolog.New(os.Stderr).
-		With().Str("package", "grpc-server").
-		Caller().Timestamp().Logger()
 
 	return &GRPCServer{
-		logger: _logger,
+		logger: comm.Logger("gRPCServer"),
 	}
 }
 

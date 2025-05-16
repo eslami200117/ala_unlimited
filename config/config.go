@@ -1,11 +1,12 @@
 package config
 
 import (
-	"github.com/joho/godotenv"
-	"log"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/eslami200117/ala_unlimited/pkg/comm"
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -22,7 +23,7 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	logger := comm.Logger("config")
 	tbt := os.Getenv("TELEGRAM_BOT_TOKEN")
 	tci := os.Getenv("TELEGRAM_CHAT_ID")
 	tau := os.Getenv("TELEGRAM_API_URL")
@@ -30,7 +31,7 @@ func LoadConfig() (*Config, error) {
 	port := os.Getenv("PORT")
 	check, err := strconv.Atoi(os.Getenv("CHEKING_INTERVAL"))
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal().Err(err).Msg("failed to parse check interval")
 	}
 	return &Config{
 		TelegramBotToken: tbt,

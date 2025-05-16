@@ -3,14 +3,14 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/eslami200117/ala_unlimited/model/request"
-	pb "github.com/eslami200117/ala_unlimited/protocpb"
 	"net/http"
-	"os"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/eslami200117/ala_unlimited/model/request"
+	"github.com/eslami200117/ala_unlimited/pkg/comm"
+	pb "github.com/eslami200117/ala_unlimited/protocpb"
 	"github.com/eslami200117/ala_unlimited/config"
 	"github.com/eslami200117/ala_unlimited/model/extract"
 
@@ -36,20 +36,17 @@ type Core struct {
 }
 
 func NewCore(cnf *config.Config) *Core {
-	_logger := zerolog.New(os.Stderr).
-		With().Str("package", "service").
-		Caller().Timestamp().Logger()
 
 	ntf := &Core{
 		conf:        cnf,
 		Q:           NewFixedQueue(100),
 		notif:       make(chan string),
 		messageResp: make(chan string),
-		logger:      _logger,
+		logger:      comm.Logger("core"),
 		sellerMap:   make(map[int]string),
 		sellerMutex: sync.RWMutex{},
-		reqQueue: 	 make(chan request.Request, 128),
-		resQueue: 	 make(chan *extract.ExtProductPrice, 128),
+		reqQueue:    make(chan request.Request, 128),
+		resQueue:    make(chan *extract.ExtProductPrice, 128),
 	}
 
 	go ntf.messaging()

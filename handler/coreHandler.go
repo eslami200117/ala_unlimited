@@ -2,11 +2,12 @@ package handler
 
 import (
 	"encoding/json"
-	"github.com/rs/zerolog"
 	"net/http"
-	"os"
 	"strconv"
 
+	"github.com/rs/zerolog"
+
+	"github.com/eslami200117/ala_unlimited/pkg/comm"
 	"github.com/eslami200117/ala_unlimited/service"
 )
 
@@ -17,13 +18,10 @@ type Api struct {
 }
 
 func NewApi(_coer *service.Core) *Api {
-	_logger := zerolog.New(os.Stderr).
-		With().Str("package", "api").
-		Caller().Timestamp().Logger()
 
 	return &Api{
 		core:   _coer,
-		logger: _logger,
+		logger: comm.Logger("api"),
 	}
 }
 
@@ -81,7 +79,6 @@ func (api *Api) UpdateSeller(w http.ResponseWriter, r *http.Request) {
 
 	api.core.SetSellers(update)
 
-	api.logger.Info().Msg("sellerMap updated")
 	w.WriteHeader(http.StatusOK)
 	_, err := w.Write([]byte("sellerMap updated"))
 	if err != nil {
