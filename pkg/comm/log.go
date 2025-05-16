@@ -10,7 +10,7 @@ import (
 func Logger(packageName string) zerolog.Logger {
 	writer := zerolog.ConsoleWriter{
 		Out:        os.Stderr,
-		TimeFormat: time.RFC3339,
+		TimeFormat: time.DateTime,
 	}
 
 	writer.FormatMessage = func(i interface{}) string {
