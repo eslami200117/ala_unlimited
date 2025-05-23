@@ -6,3 +6,4 @@ config.json
 protocpb/*.pb.go
 .env
 output.json
+admins.txt
