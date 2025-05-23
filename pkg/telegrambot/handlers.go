@@ -9,63 +9,67 @@ import (
 func (t *TelBot) handle(update tgbotapi.Update) {
 	if update.Message != nil {
 		userID := update.Message.From.ID
+		chatID := update.Message.Chat.ID
 
 		switch t.state[userID] {
 		case "awaiting_user_id_add":
 			t.logger.Info().Msgf("Adding user: %s", update.Message.Text)
 			id, err := strconv.ParseInt(update.Message.Text, 10, 64)
 			if err != nil {
-				t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "❌ Please send a valid number."))
+				t.bot.Send(tgbotapi.NewMessage(chatID, "❌ Please send a valid number."))
 				return
 			}
 			t.admins[id] = false
 			t.state[userID] = ""
-			t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "✅ User added."))
+			t.bot.Send(tgbotapi.NewMessage(chatID, "✅ User added."))
+			t.showMenu(chatID)
 		case "awaiting_user_id_remove":
 			t.logger.Info().Msgf("Removing user: %s", update.Message.Text)
 			id, err := strconv.ParseInt(update.Message.Text, 10, 64)
 			if err != nil {
-				t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "❌ Please send a valid number."))
+				t.bot.Send(tgbotapi.NewMessage(chatID, "❌ Please send a valid number."))
 				return
 			}
 			delete(t.admins, id)
 			t.state[userID] = ""
-			t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "✅ User removed."))
+			t.bot.Send(tgbotapi.NewMessage(chatID, "✅ User removed."))
+			t.showMenu(chatID)
 		case "awaiting_core_input":
 			t.reqChn <- "start"
 			t.reqChn <- update.Message.Text
 			res := <-t.resChn
 			if res != "OK" {
-				t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, res))
+				t.bot.Send(tgbotapi.NewMessage(chatID, res))
 				return
 			}
 			t.state[userID] = ""
-			t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "✅ Core started."))
+			t.bot.Send(tgbotapi.NewMessage(chatID, "✅ Core started."))
+			t.showMenu(chatID)
 
 		case "awaiting_seller_map":
 			t.reqChn <- "set"
 			t.reqChn <- update.Message.Text
 			res := <-t.resChn
 			if res != "OK" {
-				t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, res))
+				t.bot.Send(tgbotapi.NewMessage(chatID, res))
 				return
 			}
 
 			t.state[userID] = ""
-			t.bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "✅ Sellers updated."))
+			t.bot.Send(tgbotapi.NewMessage(chatID, "✅ Sellers updated."))
+			t.showMenu(chatID)
 
 		default:
 			if update.Message.IsCommand() {
 				switch update.Message.Command() {
 				case "start":
-					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Choose an option:")
-					msg.ReplyMarkup = GetMainMenu()
-					t.bot.Send(msg)
+					t.showMenu(chatID)
 				}
 			}
 		}
+
 	} else if update.CallbackQuery != nil {
-		t.bot.Request(tgbotapi.NewCallback(update.CallbackQuery.ID, ""))
+		t.bot.Request(tgbotapi.NewCallback(update.CallbackQuery.ID, update.CallbackQuery.Data))
 
 		userID := update.CallbackQuery.From.ID
 		chatID := update.CallbackQuery.Message.Chat.ID
@@ -87,13 +91,21 @@ func (t *TelBot) handle(update tgbotapi.Update) {
 			t.reqChn <- "done"
 			t.logger.Info().Msg("Core stopped.")
 			t.bot.Send(tgbotapi.NewMessage(chatID, "🛑 Core stopped."))
+			t.showMenu(chatID)
 		case "log":
 			t.reqChn <- "log"
 			t.bot.Send(tgbotapi.NewMessage(chatID, "📜 Logs coming soon..."))
+			log := <-t.resChn
+			t.bot.Send(tgbotapi.NewMessage(chatID, log))
+			t.showMenu(chatID)
 		}
 
-		msg := tgbotapi.NewMessage(chatID, "Choose an option:")
-		msg.ReplyMarkup = GetMainMenu()
-		t.bot.Send(msg)
 	}
+	// t.showMenu(update.Message.Chat.ID)
+}
+
+func (t *TelBot) showMenu(chatID int64) {
+	msg := tgbotapi.NewMessage(chatID, "Choose an option:")
+	msg.ReplyMarkup = GetMainMenu()
+	t.bot.Send(msg)
 }

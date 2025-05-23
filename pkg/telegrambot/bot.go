@@ -2,7 +2,7 @@ package telegrambot
 
 import (
 	"bufio"
-	"encoding/json"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -30,7 +30,6 @@ func NewTelBot(token string, debug bool, _reqChn, _resChn chan string) TelBot {
 	_admins := make(map[int64]bool)
 	_bot.Debug = debug
 	_logger.Info().Msgf("Authorized on account %s", _bot.Self.UserName)
-	_logger.Info().Msgf("Bot ID: %d", _bot.Self.ID)
 
 	return TelBot{
 		bot:    _bot,
@@ -99,21 +98,16 @@ func (t TelBot) loadAllowedUsers() {
 func (t TelBot) saveAllowedUsers() {
 	t.logger.Info().Msg("Saving allowed users")
 
-	ids := make([]int64, 0, len(t.admins))
-	for id := range t.admins {
-		if !t.admins[id] {
-			continue
+	var lines []string
+	for id, allowed := range t.admins {
+		if allowed {
+			lines = append(lines, fmt.Sprintf("%d", id))
 		}
-		ids = append(ids, id)
 	}
 
-	data, err := json.MarshalIndent(ids, "", "  ")
-	if err != nil {
-		t.logger.Error().Err(err).Msg("Error marshaling allowed users")
-		return
-	}
+	output := strings.Join(lines, "\n")
 
-	if err := os.WriteFile("admins.txt", data, 0644); err != nil {
+	if err := os.WriteFile("admins.txt", []byte(output), 0644); err != nil {
 		t.logger.Error().Err(err).Msg("Error writing admins.txt")
 	}
 }
