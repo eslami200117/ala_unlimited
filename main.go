@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/eslami200117/ala_unlimited/config"
-	"github.com/eslami200117/ala_unlimited/pkg/comm"
-
 	"github.com/eslami200117/ala_unlimited/handler"
+	"github.com/eslami200117/ala_unlimited/pkg/comm"
+	"github.com/eslami200117/ala_unlimited/pkg/telegrambot"
 	"github.com/eslami200117/ala_unlimited/server"
 	"github.com/eslami200117/ala_unlimited/service"
 )
@@ -20,9 +20,12 @@ func main() {
 			Err(err).
 			Msg("failed to load config")
 	}
+	reqChn, resChn := make(chan string), make(chan string)
 
-	coreService := service.NewCore(conf)
+	tb := telegrambot.NewTelBot(conf.TelegramBotToken, conf.Debug, reqChn, resChn)
+	go tb.RunBot()
 
+	coreService := service.NewCore(conf, reqChn, resChn)
 	go server.NewGRPCServer().StartGRPC(coreService)
 
 	api := handler.NewApi(coreService)

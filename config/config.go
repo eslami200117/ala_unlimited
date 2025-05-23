@@ -16,6 +16,7 @@ type Config struct {
 	DigiKalaAPIURL   string
 	Port             string
 	CheckInterval    time.Duration
+	Debug            bool
 }
 
 func LoadConfig() (*Config, error) {
@@ -29,6 +30,7 @@ func LoadConfig() (*Config, error) {
 	tau := os.Getenv("TELEGRAM_API_URL")
 	dau := os.Getenv("DIGIKALA_API_URL")
 	port := os.Getenv("PORT")
+	debugMode := os.Getenv("DEBUG_MODE")
 	check, err := strconv.Atoi(os.Getenv("CHEKING_INTERVAL"))
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to parse check interval")
@@ -40,6 +42,7 @@ func LoadConfig() (*Config, error) {
 		DigiKalaAPIURL:   dau,
 		Port:             port,
 		CheckInterval:    time.Duration(check),
+		Debug:            debugMode == "true",
 	}, nil
 
 }

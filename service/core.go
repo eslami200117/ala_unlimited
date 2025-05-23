@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/eslami200117/ala_unlimited/config"
+	"github.com/eslami200117/ala_unlimited/model/extract"
 	"github.com/eslami200117/ala_unlimited/model/request"
 	"github.com/eslami200117/ala_unlimited/pkg/comm"
 	pb "github.com/eslami200117/ala_unlimited/protocpb"
-	"github.com/eslami200117/ala_unlimited/config"
-	"github.com/eslami200117/ala_unlimited/model/extract"
 
 	"github.com/rs/zerolog"
 )
@@ -35,13 +35,13 @@ type Core struct {
 	errorCount   int
 }
 
-func NewCore(cnf *config.Config) *Core {
+func NewCore(cnf *config.Config, _reqChn, _resChn chan string) *Core {
 
-	ntf := &Core{
+	core := &Core{
 		conf:        cnf,
 		Q:           NewFixedQueue(100),
-		notif:       make(chan string),
-		messageResp: make(chan string),
+		notif:       _reqChn,
+		messageResp: _resChn,
 		logger:      comm.Logger("core"),
 		sellerMap:   make(map[int]string),
 		sellerMutex: sync.RWMutex{},
@@ -49,8 +49,8 @@ func NewCore(cnf *config.Config) *Core {
 		resQueue:    make(chan *extract.ExtProductPrice, 128),
 	}
 
-	go ntf.messaging()
-	return ntf
+	go core.messaging()
+	return core
 
 }
 
@@ -64,35 +64,12 @@ func (c *Core) Start(maxRate, duration int) error {
 	c.cancel = cancel
 
 	runTicker := time.NewTicker(time.Duration(maxRate) * time.Microsecond)
-	checkTicker := time.NewTicker(c.conf.CheckInterval * time.Minute)
 
 	go c.run(ctx, runTicker)
-	go c.manager(ctx, checkTicker)
 
 	return nil
 }
 
-func (c *Core) manager(ctx context.Context, checkTicker *time.Ticker) {
-	defer checkTicker.Stop()
-	c.notif = make(chan string)
-	c.messageResp = make(chan string)
-
-	for {
-		select {
-		case <-checkTicker.C:
-			c.notif <- "log"
-			msg := <-c.messageResp
-			if err := c.SendTelegramMessage(msg); err != nil {
-				c.logger.Error().
-					Err(err).
-					Msg("failed to send telegram message")
-			}
-		case <-ctx.Done():
-			c.logger.Info().Msg("manager is stopping")
-			return
-		}
-	}
-}
 
 func (c *Core) run(ctx context.Context, ticker *time.Ticker) {
 	c.requestCount = 0
@@ -151,7 +128,6 @@ func (c *Core) Quit() {
 		c.logger.Info().Msg("quit successfully")
 	} else {
 		c.logger.Info().Msg("try to quit when it's already stopped")
-		c.messageResp <- "already stopped"
 	}
 }
 

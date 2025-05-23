@@ -1,38 +1,11 @@
 package service
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"net/http"
+	"strconv"
+	"strings"
 )
 
-func (c *Core) SendTelegramMessage(message string) error {
-	c.logger.Info().Msg(fmt.Sprintf("[telegram] %s...", message[:7]))
-	url := fmt.Sprintf(c.conf.TelegramAPIURL, c.conf.TelegramBotToken)
-
-	payload := map[string]string{
-		"chat_id": c.conf.TelegramChatID,
-		"text":    message,
-	}
-	jsonData, _ := json.Marshal(payload)
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
-	if err != nil {
-		c.logger.Error().
-			Err(err).
-			Msg("failed to send telegram message")
-		return err
-	}
-	defer func() {
-		err := resp.Body.Close()
-		if err != nil {
-			c.logger.Error().
-				Err(err).
-				Msg("failed to close response body")
-		}
-	}()
-	return nil
-}
 
 func (c *Core) messaging() {
 	for {
@@ -49,6 +22,41 @@ func (c *Core) messaging() {
 				c.messageResp <- fmt.Sprintf("number of requests: %d, number of errors: %d", c.requestCount, c.errorCount)
 				c.requestCount = 0
 				c.errorCount = 0
+			case "start":
+				text := <-c.notif
+				parts := strings.Fields(text)
+				if len(parts) != 2 {
+					c.messageResp <- "❌ Please send exactly 2 numbers: max rate and duration."
+					continue
+				}
+				maxRate, err1 := strconv.Atoi(parts[0])
+				duration, err2 := strconv.Atoi(parts[1])
+				if err1 != nil || err2 != nil {
+					c.messageResp <- "❌ Invalid input. Send two integers."
+					continue
+				}
+				c.Start(maxRate, duration)
+				c.messageResp <- "OK"
+			case "set":
+				text := <-c.notif
+				lines := strings.Split(text, "\n")
+				sellers := make(map[int]string)
+				for _, line := range lines {
+					parts := strings.Fields(line)
+					if len(parts) < 2 {
+						c.messageResp <- "❌ Invalid input."
+						continue
+					}
+					id, err := strconv.Atoi(parts[0])
+					if err != nil {
+						c.messageResp <- "❌ Invalid input."
+						continue
+					}
+					sellers[id] = strings.Join(parts[1:], " ")
+				}
+				c.SetSellers(sellers)
+				c.messageResp <- "OK"
+
 			}
 
 		}
