@@ -6,20 +6,17 @@ import (
 	"strings"
 )
 
-
 func (c *Core) messaging() {
+	c.logger.Info().Msg("Messaging service started")
 	for {
 		select {
 		case req := <-c.notif:
 			switch req {
 			case "done":
-				close(c.resQueue)
-				close(c.reqQueue)
-				c.running = false
-				c.messageResp <- "quit successfully!"
-				return
+				c.Quit()
 			case "log":
 				c.messageResp <- fmt.Sprintf("number of requests: %d, number of errors: %d", c.requestCount, c.errorCount)
+				c.logger.Info().Msgf("number of requests: %d, number of errors: %d", c.requestCount, c.errorCount)
 				c.requestCount = 0
 				c.errorCount = 0
 			case "start":

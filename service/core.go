@@ -55,6 +55,7 @@ func NewCore(cnf *config.Config, _reqChn, _resChn chan string) *Core {
 }
 
 func (c *Core) Start(maxRate, duration int) error {
+	c.logger.Info().Msg("Starting core.")
 	c.running = true
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(duration)*time.Minute)
@@ -69,7 +70,6 @@ func (c *Core) Start(maxRate, duration int) error {
 
 	return nil
 }
-
 
 func (c *Core) run(ctx context.Context, ticker *time.Ticker) {
 	c.requestCount = 0
@@ -132,6 +132,7 @@ func (c *Core) Quit() {
 }
 
 func (c *Core) SetSellers(sellers map[int]string) {
+	c.logger.Info().Msg("Setting sellers.")
 	c.sellerMutex.Lock()
 	defer c.sellerMutex.Unlock()
 	for id, name := range sellers {
