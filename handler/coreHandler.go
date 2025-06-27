@@ -17,10 +17,10 @@ type Api struct {
 	logger zerolog.Logger
 }
 
-func NewApi(_coer *service.Core) *Api {
+func NewApi(_core *service.Core) *Api {
 
 	return &Api{
-		core:   _coer,
+		core:   _core,
 		logger: comm.Logger("api"),
 	}
 }

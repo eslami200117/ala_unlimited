@@ -41,7 +41,7 @@ func NewTelBot(token string, debug bool, _reqChn, _resChn chan string) TelBot {
 	}
 }
 
-func (t TelBot) RunBot() {
+func (t *TelBot) RunBot() {
 	t.loadAllowedUsers()
 	defer t.saveAllowedUsers()
 	u := tgbotapi.NewUpdate(0)
@@ -67,7 +67,7 @@ func (t TelBot) RunBot() {
 }
 
 // Load allowed users from the file into memory
-func (t TelBot) loadAllowedUsers() {
+func (t *TelBot) loadAllowedUsers() {
 	file, err := os.Open("admins.txt")
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -76,7 +76,12 @@ func (t TelBot) loadAllowedUsers() {
 		}
 		t.logger.Fatal().Err(err).Msg("Error opening admins.txt")
 	}
-	defer file.Close()
+	defer func() {
+		err := file.Close()
+		if err != nil {
+			t.logger.Fatal().Err(err).Msg("Error closing admins.txt")
+		}
+	}()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -95,7 +100,7 @@ func (t TelBot) loadAllowedUsers() {
 }
 
 // Save allowed users back to the file
-func (t TelBot) saveAllowedUsers() {
+func (t *TelBot) saveAllowedUsers() {
 	t.logger.Info().Msg("Saving allowed users")
 
 	var lines []string
