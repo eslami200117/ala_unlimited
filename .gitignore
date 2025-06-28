@@ -4,6 +4,6 @@ config.json
 
 .idea
 #protocpb/*.pb.go
-.env
+#.env
 output.json
-admins.txt
+#admins.txt
