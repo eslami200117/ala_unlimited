@@ -45,12 +45,7 @@ func (api *Api) StartCore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = api.core.Start(maxRate, duration)
-	if err != nil {
-		api.logger.Error().Err(err).Msg("core start failed")
-		http.Error(w, "Error in Start", http.StatusBadRequest)
-		return
-	}
+	api.core.Start(maxRate, duration)
 	api.logger.Info().
 		Str("remote", r.RemoteAddr).
 		Str("duration", durationStr).

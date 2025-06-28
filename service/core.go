@@ -54,7 +54,7 @@ func NewCore(cnf *config.Config, _reqChn, _resChn chan string) *Core {
 
 }
 
-func (c *Core) Start(maxRate, duration int) error {
+func (c *Core) Start(maxRate, duration int) {
 	c.logger.Info().Msg("Starting core.")
 	c.running = true
 
@@ -68,7 +68,6 @@ func (c *Core) Start(maxRate, duration int) error {
 
 	go c.run(ctx, runTicker)
 
-	return nil
 }
 
 func (c *Core) run(ctx context.Context, ticker *time.Ticker) {
