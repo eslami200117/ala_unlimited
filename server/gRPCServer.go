@@ -23,7 +23,7 @@ func NewGRPCServer() *GRPCServer {
 }
 
 func (g *GRPCServer) StartGRPC(core *service.Core, conf *config.Config) {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", conf.GRPC_PORT))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", conf.GrpcPort))
 	if err != nil {
 		g.logger.Fatal().Err(err).Msg("failed to listen")
 	}
@@ -31,7 +31,7 @@ func (g *GRPCServer) StartGRPC(core *service.Core, conf *config.Config) {
 	grpcServer := grpc.NewServer()
 	protocpb.RegisterPriceServiceServer(grpcServer, core)
 
-	g.logger.Info().Msg(fmt.Sprintf("gRPC server listening on :%s", conf.GRPC_PORT))
+	g.logger.Info().Msg(fmt.Sprintf("gRPC server listening on :%s", conf.GrpcPort))
 	if err := grpcServer.Serve(lis); err != nil {
 		g.logger.Fatal().Err(err).Msg("failed to serve")
 	}

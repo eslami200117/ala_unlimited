@@ -17,7 +17,7 @@ type Config struct {
 	Port             string
 	CheckInterval    time.Duration
 	Debug            bool
-	GRPC_PORT        string
+	GrpcPort         string
 }
 
 func LoadConfig() (*Config, error) {
@@ -45,7 +45,7 @@ func LoadConfig() (*Config, error) {
 		Port:             port,
 		CheckInterval:    time.Duration(check),
 		Debug:            debugMode == "true",
-		GRPC_PORT:        grpcPort,
+		GrpcPort:         grpcPort,
 	}, nil
 
 }
