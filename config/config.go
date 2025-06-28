@@ -17,6 +17,7 @@ type Config struct {
 	Port             string
 	CheckInterval    time.Duration
 	Debug            bool
+	GRPC_PORT        string
 }
 
 func LoadConfig() (*Config, error) {
@@ -31,6 +32,7 @@ func LoadConfig() (*Config, error) {
 	dau := os.Getenv("DIGIKALA_API_URL")
 	port := os.Getenv("PORT")
 	debugMode := os.Getenv("DEBUG_MODE")
+	grpcPort := os.Getenv("GRPC_PORT")
 	check, err := strconv.Atoi(os.Getenv("CHEKING_INTERVAL"))
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to parse check interval")
@@ -43,6 +45,7 @@ func LoadConfig() (*Config, error) {
 		Port:             port,
 		CheckInterval:    time.Duration(check),
 		Debug:            debugMode == "true",
+		GRPC_PORT:        grpcPort,
 	}, nil
 
 }

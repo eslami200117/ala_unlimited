@@ -25,7 +25,7 @@ func main() {
 	//go tb.RunBot()
 
 	coreService := service.NewCore(conf, reqChn, resChn)
-	go server.NewGRPCServer().StartGRPC(coreService)
+	go server.NewGRPCServer().StartGRPC(coreService, conf)
 	coreService.Start(250, 0)
 	coreService.SetSellers(map[int]string{
 		1720400: "پاورتک شاپ",
