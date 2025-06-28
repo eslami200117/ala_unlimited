@@ -22,7 +22,7 @@ func NewGRPCServer() *GRPCServer {
 	}
 }
 
-func (g *GRPCServer) StartGRPC(core *service.Core, conf config.Config) {
+func (g *GRPCServer) StartGRPC(core *service.Core, conf *config.Config) {
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", conf.GRPC_PORT))
 	if err != nil {
 		g.logger.Fatal().Err(err).Msg("failed to listen")
