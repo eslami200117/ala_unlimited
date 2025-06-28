@@ -3,7 +3,7 @@ output.log
 config.json
 
 .idea
-protocpb/*.pb.go
+#protocpb/*.pb.go
 .env
 output.json
 admins.txt
