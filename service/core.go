@@ -1,8 +1,11 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"sync"
@@ -137,4 +140,101 @@ func (c *Core) SetSellers(sellers map[int]string) {
 	for id, name := range sellers {
 		c.sellerMap[id] = name
 	}
+}
+
+func (c *Core) StartCron() {
+	vPTicker := time.NewTicker(17 * time.Minute)
+	orderTicker := time.NewTicker(15 * time.Minute)
+	for {
+		select {
+		case <-vPTicker.C:
+			err := initialVrtPrd()
+			if err != nil {
+				c.logger.Error().Err(err).Msg("failed to run a cronjob")
+			}
+		case <-orderTicker.C:
+			err := initialOrder()
+			if err != nil {
+				c.logger.Error().Err(err).Msg("failed to run a cronjob")
+			}
+		}
+	}
+}
+
+func initialOrder() error {
+	// Step 1: Send GET request
+	url := "https://planner.runflare.run/v2/initializing_products_and_variety/"
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(body, &data); err != nil {
+		return err
+	}
+
+	// Step 2: Prepare and send POST request
+	notifURL := "https://planner.runflare.run/notification/"
+	payload := map[string]string{
+		"message": fmt.Sprintf("%v", data["notification"]),
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	resp2, err := http.Post(notifURL, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+	defer resp2.Body.Close()
+	return nil
+}
+
+func initialVrtPrd() error {
+	// Step 1: GET request
+	url := "https://planner.runflare.run/v2/initializing_products_and_variety/"
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	// Decode JSON
+	var data map[string]interface{}
+	if err := json.Unmarshal(body, &data); err != nil {
+		return err
+	}
+
+	// Step 2: POST request with notification message
+	notifURL := "https://planner.runflare.run/notification/"
+	msg := map[string]string{
+		"message": fmt.Sprintf("%v", data["notification"]),
+	}
+
+	jsonData, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	resp2, err := http.Post(notifURL, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+	defer resp2.Body.Close()
+	return nil
 }

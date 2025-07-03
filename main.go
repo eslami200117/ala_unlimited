@@ -27,6 +27,7 @@ func main() {
 	coreService := service.NewCore(conf, reqChn, resChn)
 	go server.NewGRPCServer().StartGRPC(coreService, conf)
 	coreService.Start(250, 0)
+	coreService.StartCron()
 	coreService.SetSellers(map[int]string{
 		1720400: "پاورتک شاپ",
 		1105946: "تک ترند",
