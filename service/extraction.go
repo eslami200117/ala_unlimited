@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"sort"
+	"strconv"
 
 	"github.com/eslami200117/ala_unlimited/model/extract"
 )
@@ -88,6 +89,7 @@ func (c *Core) extractVariantsForColor(color string, variants []*VariantResponse
 			sellerID := int(v.Seller.ID)
 			sellerName := sellerMap[sellerID]
 			if _, exists := sellerMap[sellerID]; !exists {
+				c.logger.Warn().Str("seller id", strconv.Itoa(sellerID))
 				sellerName = "False"
 			}
 			variant := &extract.Variant{
